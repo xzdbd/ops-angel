@@ -7,5 +7,5 @@ import (
 
 func init() {
 	beego.Router("/", &controllers.MainController{})
-	beego.Router("/weixin", &controllers.MainController{})
+	beego.Router("/weixin", &controllers.AngelController{})
 }
