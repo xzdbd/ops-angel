@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	TOKEN = "ops-angel"
+	TOKEN = "opsangel"
 )
 
 func CheckSignature(timestamp string, nonce string) string {
