@@ -4,6 +4,8 @@ import (
 	"encoding/xml"
 	"time"
 
+	"strings"
+
 	"github.com/astaxie/beego"
 	"github.com/xzdbd/ops-angel/models"
 )
@@ -29,6 +31,15 @@ func (c *AngelController) Post() {
 	var req models.Request
 	xml.Unmarshal(c.Ctx.Input.RequestBody, &req)
 	beego.Trace("req:", req)
+
+	content := req.Content
+	beego.Trace("content:", content)
+	toolname := strings.Split(content, " ")[0]
+	beego.Trace("toolname:", toolname)
+	switch toolname {
+	case models.GoogleToolName:
+		beego.Trace("It is a google tool.")
+	}
 
 	var resp models.TextResponse
 	resp.ToUserName = req.FromUserName
