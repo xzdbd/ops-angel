@@ -46,28 +46,28 @@ type Request struct {
 	MsgId      int64
 }
 
-//回复文本消息
+// 回复文本消息
 type TextResponse struct {
 	XMLName xml.Name `xml:"xml"`
 	msgBaseResp
 	Content string
 }
 
-//回复图片消息
+// 回复图片消息
 type ImageResponse struct {
 	XMLName xml.Name `xml:"xml"`
 	msgBaseResp
 	MediaId int64 //通过上传多媒体文件，得到的id。
 }
 
-//回复语音消息
+// 回复语音消息
 type VoiceResponse struct {
 	XMLName xml.Name `xml:"xml"`
 	msgBaseResp
 	MediaId int64 //通过上传多媒体文件，得到的id。
 }
 
-//回复视频消息
+// 回复视频消息
 type VideoResponse struct {
 	XMLName xml.Name `xml:"xml"`
 	msgBaseResp
@@ -76,7 +76,7 @@ type VideoResponse struct {
 	Description string
 }
 
-//回复音乐消息
+// 回复音乐消息
 type MusicResponse struct {
 	XMLName xml.Name `xml:"xml"`
 	msgBaseResp
@@ -87,15 +87,15 @@ type MusicResponse struct {
 	ThumbMediaId int64 //缩略图的媒体id，通过上传多媒体文件，得到的id
 }
 
-//回复图文消息
+// 回复图文消息
 type NewsResponse struct {
 	XMLName xml.Name `xml:"xml"`
 	msgBaseResp
 	ArticleCount int     `xml:",omitempty"`
-	Articles     []*item `xml:"Articles>item,omitempty"`
+	Articles     []*Item `xml:"Articles>item,omitempty"`
 }
 
-type item struct {
+type Item struct {
 	XMLName     xml.Name `xml:"item"`
 	Title       string
 	Description string
