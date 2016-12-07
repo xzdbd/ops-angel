@@ -104,7 +104,7 @@ func subscribeHandler(req models.Request) models.TextResponse {
 	resp.FromUserName = req.ToUserName
 	resp.Content = `感谢订阅运维小天使官方微信，目前支持的工具：
 		1.google
-	输入工具名获取使用帮助。`
+输入工具名获取使用帮助。`
 	resp.CreateTime = time.Duration(time.Now().Unix())
 	resp.MsgType = models.MsgTypeText
 	return resp
@@ -116,7 +116,7 @@ func descriptionHandler(req models.Request) models.TextResponse {
 	resp.FromUserName = req.ToUserName
 	resp.Content = `运维小天使官方微信，目前支持的工具：
 		1.google
-	输入工具名获取使用帮助。`
+输入工具名获取使用帮助。`
 	resp.CreateTime = time.Duration(time.Now().Unix())
 	resp.MsgType = models.MsgTypeText
 	return resp
