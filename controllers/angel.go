@@ -40,7 +40,7 @@ func (c *AngelController) Post() {
 			beego.Info("User request google tool, User:", req.FromUserName, "Command:", req.Content)
 			resp, respHelp := googleToolHandler(content, req)
 			if respHelp.Content != "" {
-				beego.Info("Response to the user with google tool help. User:", req.FromUserName, "Content:", respHelp.Content)
+				beego.Info("Response to the user with google tool help. User:", req.FromUserName)
 				c.Data["xml"] = respHelp
 				c.ServeXML()
 				break
@@ -50,15 +50,10 @@ func (c *AngelController) Post() {
 			c.ServeXML()
 		}
 	} else if req.MsgType == models.MsgTypeEvent && req.Event == models.MsgTypeEventSubscribe {
-		subscribeHandler(req)
+		c.Data["xml"] = subscribeHandler(req)
+		c.ServeXML()
 	} else {
-		var resp models.TextResponse
-		resp.ToUserName = req.FromUserName
-		resp.FromUserName = req.ToUserName
-		resp.Content = "Hello, it works!"
-		resp.CreateTime = time.Duration(time.Now().Unix())
-		resp.MsgType = models.MsgTypeText
-		c.Data["xml"] = resp
+		c.Data["xml"] = descriptionHandler(req)
 		c.ServeXML()
 	}
 
@@ -105,6 +100,18 @@ func subscribeHandler(req models.Request) models.TextResponse {
 	resp.ToUserName = req.FromUserName
 	resp.FromUserName = req.ToUserName
 	resp.Content = `感谢订阅运维小天使官方微信\U0001f606，目前支持的工具：
+		1.google
+	输入工具名获取使用帮助。`
+	resp.CreateTime = time.Duration(time.Now().Unix())
+	resp.MsgType = models.MsgTypeText
+	return resp
+}
+
+func descriptionHandler(req models.Request) models.TextResponse {
+	var resp models.TextResponse
+	resp.ToUserName = req.FromUserName
+	resp.FromUserName = req.ToUserName
+	resp.Content = `运维小天使官方微信\U0001f606，目前支持的工具：
 		1.google
 	输入工具名获取使用帮助。`
 	resp.CreateTime = time.Duration(time.Now().Unix())
