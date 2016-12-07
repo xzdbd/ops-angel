@@ -21,8 +21,9 @@ type toolBase struct {
 
 type GoogleTool struct {
 	toolBase
-	Key string
-	N   int
+	Key     string
+	N       int
+	HelpMsg string
 }
 
 type GoogleResult struct {
@@ -45,14 +46,33 @@ const (
 
 	// Google Tool
 	GoogleToolName     = "google"
-	GoogleToolAlias    = "google"
+	GoogleToolAlias    = "g"
 	GoogleToolEndpoint = "/search/google"
+	GoogleHelpMsg      = `google is a google search tool in wechat. It will return 4 results by default.
+
+	Usage:
+		google KEY 
+	or
+		g KEY 
+
+	KEY:
+		search key words.
+
+	Example:
+		google happy day	
+	`
+)
+
+var (
+	apiuser     = beego.AppConfig.String("apiuser")
+	apipassword = beego.AppConfig.String("apipassword")
 )
 
 func (g *GoogleTool) NewTool() {
 	g.name = GoogleToolName
 	g.alias = GoogleToolAlias
 	g.endpoint = GoogleToolEndpoint
+	g.HelpMsg = GoogleHelpMsg
 }
 
 func (g *GoogleTool) Run() (NewsResponse, error) {
@@ -64,7 +84,7 @@ func (g *GoogleTool) Run() (NewsResponse, error) {
 	req := httplib.Get(APIADDRESS + APIVERSION + g.endpoint)
 	req.Param("key", g.Key)
 	req.Param("n", strconv.Itoa(g.N))
-	req.SetBasicAuth("xzdbd", "xzdbd1989")
+	req.SetBasicAuth(apiuser, apipassword)
 	req.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 
 	err := req.ToJSON(&GoogleResultList)

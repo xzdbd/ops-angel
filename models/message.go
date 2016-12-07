@@ -38,6 +38,7 @@ type Request struct {
 	XMLName xml.Name `xml:xml`
 	msgBaseReq
 	Content    string
+	Event      string
 	Location_X float32
 	Location_Y float32
 	Scale      int
