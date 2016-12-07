@@ -102,7 +102,7 @@ func subscribeHandler(req models.Request) models.TextResponse {
 	var resp models.TextResponse
 	resp.ToUserName = req.FromUserName
 	resp.FromUserName = req.ToUserName
-	resp.Content = `感谢订阅运维小天使官方微信\U0001f606，目前支持的工具：
+	resp.Content = `感谢订阅运维小天使官方微信，目前支持的工具：
 		1.google
 	输入工具名获取使用帮助。`
 	resp.CreateTime = time.Duration(time.Now().Unix())
@@ -114,7 +114,7 @@ func descriptionHandler(req models.Request) models.TextResponse {
 	var resp models.TextResponse
 	resp.ToUserName = req.FromUserName
 	resp.FromUserName = req.ToUserName
-	resp.Content = `运维小天使官方微信\U0001f606，目前支持的工具：
+	resp.Content = `运维小天使官方微信，目前支持的工具：
 		1.google
 	输入工具名获取使用帮助。`
 	resp.CreateTime = time.Duration(time.Now().Unix())
