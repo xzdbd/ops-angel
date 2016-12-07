@@ -94,7 +94,7 @@ func (g *GoogleTool) Run() (NewsResponse, error) {
 
 	newsResp.ArticleCount = g.N
 	for i := 0; i < g.N; i++ {
-		item := Item{Title: GoogleResultList[i].Title, Description: GoogleResultList[i].Abstract, Url: GoogleResultList[i].URL}
+		item := Item{Title: GoogleResultList[i].Title, Description: GoogleResultList[i].Abstract, Url: GoogleResultList[i].URL, PicUrl: "https://lh3.googleusercontent.com/0-BzaWtxoAnsBjQ_wzUcKxyF07XE7v2Kkg1ogPVUdzmQpvaz118uHQEGU6BdtzJuzfo=h1264"}
 		newsResp.Articles = append(newsResp.Articles, &item)
 	}
 	beego.Trace("newsResp:", newsResp)
