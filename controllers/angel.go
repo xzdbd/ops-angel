@@ -70,7 +70,7 @@ func googleToolHandler(content string, req models.Request) (models.NewsResponse,
 	googleTool.NewTool()
 
 	cmd := strings.SplitN(content, " ", 2)
-
+	beego.Trace("1:", cmd[0], "2:", cmd[1])
 	length := len(cmd)
 
 	if length == 2 {

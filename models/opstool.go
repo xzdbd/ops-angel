@@ -92,9 +92,10 @@ func (g *GoogleTool) Run() (NewsResponse, error) {
 		return newsResp, err
 	}
 
-	newsResp.ArticleCount = g.N
-	for i := 0; i < g.N; i++ {
-		item := Item{Title: GoogleResultList[i].Title, Description: GoogleResultList[i].Abstract, Url: GoogleResultList[i].URL, PicUrl: "https://lh3.googleusercontent.com/0-BzaWtxoAnsBjQ_wzUcKxyF07XE7v2Kkg1ogPVUdzmQpvaz118uHQEGU6BdtzJuzfo=h1264"}
+	beego.Trace("GoogleResultList:", GoogleResultList)
+	newsResp.ArticleCount = len(GoogleResultList)
+	for i := 0; i < newsResp.ArticleCount; i++ {
+		item := Item{Title: GoogleResultList[i].Title, Description: GoogleResultList[i].Abstract, Url: GoogleResultList[i].URL, PicUrl: "https://s.aolcdn.com/hss/storage/midas/17f4b60aec299f212a456632b2311c5e/202565129/google-1200-2.jpg"}
 		newsResp.Articles = append(newsResp.Articles, &item)
 	}
 	beego.Trace("newsResp:", newsResp)
