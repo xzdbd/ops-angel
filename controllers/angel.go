@@ -48,6 +48,9 @@ func (c *AngelController) Post() {
 			beego.Info("Response to the user with google result. User:", req.FromUserName, "Count:", resp.ArticleCount)
 			c.Data["xml"] = resp
 			c.ServeXML()
+		default:
+			c.Data["xml"] = subscribeHandler(req)
+			c.ServeXML()
 		}
 	} else if req.MsgType == models.MsgTypeEvent && req.Event == models.MsgTypeEventSubscribe {
 		c.Data["xml"] = subscribeHandler(req)
