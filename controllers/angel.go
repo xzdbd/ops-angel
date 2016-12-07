@@ -30,21 +30,22 @@ func (c *AngelController) Get() {
 func (c *AngelController) Post() {
 	var req models.Request
 	xml.Unmarshal(c.Ctx.Input.RequestBody, &req)
-
+	beego.Info("User request, User:", req.FromUserName, "Message Type:", req.MsgType, "Content:", req.Content)
 	if req.MsgType == models.MsgTypeText {
 		content := req.Content
 		toolname := strings.Split(content, " ")[0]
 
 		switch toolname {
-		case models.GoogleToolName:
-			beego.Trace("It is a google tool.")
+		case models.GoogleToolName, models.GoogleToolAlias:
+			beego.Info("User request google tool, User:", req.FromUserName, "Command:", req.Content)
 			resp, respHelp := googleToolHandler(content, req)
-			beego.Trace("resp:", resp, "respHelp", respHelp.Content)
 			if respHelp.Content != "" {
+				beego.Info("Response to the user with google tool help. User:", req.FromUserName, "Content:", respHelp.Content)
 				c.Data["xml"] = respHelp
 				c.ServeXML()
+				break
 			}
-
+			beego.Info("Response to the user with google result. User:", req.FromUserName, "Count:", resp.ArticleCount)
 			c.Data["xml"] = resp
 			c.ServeXML()
 		}
@@ -70,7 +71,6 @@ func googleToolHandler(content string, req models.Request) (models.NewsResponse,
 	googleTool.NewTool()
 
 	cmd := strings.SplitN(content, " ", 2)
-	beego.Trace("1:", cmd[0], "2:", cmd[1])
 	length := len(cmd)
 
 	if length == 2 {
