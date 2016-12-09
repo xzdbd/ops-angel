@@ -48,8 +48,16 @@ func (c *AngelController) Post() {
 			beego.Info("Response to the user with google result. User:", req.FromUserName, "Count:", resp.ArticleCount)
 			c.Data["xml"] = resp
 			c.ServeXML()
+
+		case models.DockerCloudToolName, models.DockerCloudToolAlias:
+			beego.Info("User request dockercloud tool, User:", req.FromUserName, "Command:", req.Content)
+			resp := dockerCloudToolHandler(content, req)
+			beego.Info("Response to the user with dockercloud result. User:", req.FromUserName, "content:", req.Content)
+			c.Data["xml"] = resp
+			c.ServeXML()
+
 		default:
-			c.Data["xml"] = subscribeHandler(req)
+			c.Data["xml"] = descriptionHandler(req)
 			c.ServeXML()
 		}
 	} else if req.MsgType == models.MsgTypeEvent && req.Event == models.MsgTypeEventSubscribe {
@@ -93,6 +101,62 @@ func googleToolHelpHandler(req models.Request, g models.GoogleTool) models.TextR
 	respHelp.ToUserName = req.FromUserName
 	respHelp.FromUserName = req.ToUserName
 	respHelp.Content = g.HelpMsg
+	respHelp.CreateTime = time.Duration(time.Now().Unix())
+	respHelp.MsgType = models.MsgTypeText
+	return respHelp
+}
+
+func dockerCloudToolHandler(content string, req models.Request) models.TextResponse {
+	var dcTool models.DockerCloudTool
+	var resp models.TextResponse
+
+	dcTool.NewTool()
+
+	cmd := strings.Split(content, " ")
+	length := len(cmd)
+
+	if length == 2 {
+		if cmd[1] == "service" {
+			dcTool.Action = "status"
+			dcTool.ServiceName = "all"
+		} else {
+			return dockerCloudToolHelpHandler(req, dcTool)
+		}
+	} else if length == 3 {
+		if cmd[1] == "service" {
+			dcTool.Action = "status"
+			dcTool.ServiceName = cmd[2]
+		} else {
+			return dockerCloudToolHelpHandler(req, dcTool)
+		}
+	} else if length == 4 {
+		if cmd[1] == "service" {
+			if cmd[3] == "start" || cmd[3] == "stop" || cmd[3] == "status" {
+				dcTool.Action = cmd[3]
+			} else {
+				return dockerCloudToolHelpHandler(req, dcTool)
+			}
+			dcTool.ServiceName = cmd[2]
+		} else {
+			return dockerCloudToolHelpHandler(req, dcTool)
+		}
+	}
+
+	resp, err := dcTool.Run()
+	if err != nil {
+		return dockerCloudToolHelpHandler(req, dcTool)
+	}
+	resp.ToUserName = req.FromUserName
+	resp.FromUserName = req.ToUserName
+	resp.CreateTime = time.Duration(time.Now().Unix())
+	return resp
+}
+
+func dockerCloudToolHelpHandler(req models.Request, dc models.DockerCloudTool) models.TextResponse {
+	var respHelp models.TextResponse
+	respHelp.ToUserName = req.FromUserName
+	respHelp.FromUserName = req.ToUserName
+	respHelp.Content = dc.HelpMsg
 	respHelp.CreateTime = time.Duration(time.Now().Unix())
 	respHelp.MsgType = models.MsgTypeText
 	return respHelp

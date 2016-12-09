@@ -5,8 +5,15 @@ import (
 
 	"strconv"
 
+	"strings"
+
+	"fmt"
+
+	"errors"
+
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/httplib"
+	"github.com/docker/go-dockercloud/dockercloud"
 )
 
 type Tool interface {
@@ -40,6 +47,14 @@ type Sitelinks struct {
 	URL      string
 }
 
+type DockerCloudTool struct {
+	toolBase
+	ServiceName string
+	Action      string
+	Privileged  bool
+	HelpMsg     string
+}
+
 const (
 	APIADDRESS = "https://api.xzdbd.com/"
 	APIVERSION = "v1"
@@ -61,6 +76,12 @@ const (
 	Example:
 		google happy day	
 	`
+
+	// Docker Cloud Tool
+	DockerCloudToolName     = "dockercloud"
+	DockerCloudToolAlias    = "dc"
+	DockerCloudToolEndpoint = "/dockercloud"
+	DockerCloudHelpMsg      = `dockercloud is a operations tool.`
 )
 
 var (
@@ -99,4 +120,108 @@ func (g *GoogleTool) Run() (NewsResponse, error) {
 	}
 
 	return newsResp, nil
+}
+
+func (dc *DockerCloudTool) NewTool() {
+	dc.name = DockerCloudToolName
+	dc.alias = DockerCloudToolAlias
+	dc.endpoint = DockerCloudToolAlias
+	dc.HelpMsg = DockerCloudHelpMsg
+}
+
+func (dc *DockerCloudTool) Run() (TextResponse, error) {
+	var dcList dockercloud.SListResponse
+	var textResp TextResponse
+	textResp.MsgType = MsgTypeText
+
+	switch dc.Action {
+	case "status":
+		if dc.ServiceName != "" {
+			if strings.ToLower(dc.ServiceName) == "all" {
+				var err error
+				dcList, err = getAllDockerCloudService()
+				if err != nil {
+					return textResp, err
+				}
+				textResp.Content = fmt.Sprintf("共有%d个服务。\n", dcList.Meta.TotalCount)
+				for i := 0; i < dcList.Meta.TotalCount; i++ {
+					textResp.Content += fmt.Sprintf("%d. %s: %s\n", i, dcList.Objects[i].Name, dcList.Objects[i].State)
+				}
+			} else {
+				var err error
+				dcList, err = getDockerCloudServiceByName(dc.ServiceName)
+				if err != nil {
+					return textResp, err
+				}
+				if dcList.Meta.TotalCount < 1 {
+					textResp.Content = fmt.Sprintf("没有找到名称为%s的服务。", dc.ServiceName)
+				} else {
+					textResp.Content = fmt.Sprintf("%s: %s\n", dcList.Objects[0].Name, dcList.Objects[0].State)
+				}
+			}
+		}
+	case "start":
+		if dc.ServiceName != "" {
+			_, err := startDockerCloudService(dc.ServiceName)
+			if err != nil {
+				textResp.Content = fmt.Sprintf("服务启动错误，错误信息：%s\n", err.Error())
+			} else {
+				textResp.Content = fmt.Sprintf("服务启动成功，请稍后查看该服务状态。")
+			}
+		}
+	default:
+		return textResp, errors.New("Invalid Action. Valid actions are 'start', 'stop' and 'status'")
+	}
+	return textResp, nil
+}
+
+func getAllDockerCloudService() (dockercloud.SListResponse, error) {
+	var dcList dockercloud.SListResponse
+	req := httplib.Get(APIADDRESS + APIVERSION + DockerCloudToolEndpoint + "/service")
+	req.SetBasicAuth(apiuser, apipassword)
+	req.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
+	err := req.ToJSON(&dcList)
+	if err != nil {
+		return dcList, err
+	}
+	return dcList, nil
+}
+
+func getDockerCloudServiceByName(name string) (dockercloud.SListResponse, error) {
+	var dcList dockercloud.SListResponse
+	req := httplib.Get(APIADDRESS + APIVERSION + DockerCloudToolEndpoint + "/service/" + name)
+	req.SetBasicAuth(apiuser, apipassword)
+	req.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
+	err := req.ToJSON(&dcList)
+	if err != nil {
+		return dcList, err
+	}
+	return dcList, nil
+}
+
+func getDockerCloudServiceUuid(name string) (string, error) {
+	dcList, err := getDockerCloudServiceByName(name)
+	if err != nil {
+		return "", err
+	}
+	if dcList.Meta.TotalCount < 1 {
+		return "", fmt.Errorf("没有找到名称为%s的服务。", name)
+	}
+	return dcList.Objects[0].Uuid, nil
+}
+
+func startDockerCloudService(name string) (dockercloud.Service, error) {
+	var service dockercloud.Service
+	uuid, err := getDockerCloudServiceUuid(name)
+	if err != nil {
+		return service, err
+	}
+	req := httplib.Post(APIADDRESS + APIVERSION + DockerCloudToolEndpoint + "/service/" + uuid + "/start")
+	req.SetBasicAuth(apiuser, apipassword)
+	req.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
+	err = req.ToJSON(&service)
+	if err != nil {
+		return service, err
+	}
+	return service, nil
 }
