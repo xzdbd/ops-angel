@@ -65,16 +65,16 @@ const (
 	GoogleToolEndpoint = "/search/google"
 	GoogleHelpMsg      = `google is a google search tool. Enjoy!
 
-	Usage:
-		google KEY 
-	or
-		g KEY 
+Usage:
+	google KEY 
+or
+	g KEY 
 
-	KEY:
-		search key words.
+KEY:
+	search key words.
 
-	Example:
-		google happy day	
+Example:
+	google happy day	
 	`
 
 	// Docker Cloud Tool
@@ -82,12 +82,14 @@ const (
 	DockerCloudToolAlias    = "dc"
 	DockerCloudToolEndpoint = "/dockercloud"
 	DockerCloudHelpMsg      = `dockercloud is an operations tool.
-	Usage:
-		dockercloud service NAME [status]|start|stop
-	or
-		dc service NAME [status]|start|stop
+
+Usage:
+	dockercloud service NAME [status]|start|stop
+or
+	dc service NAME [status]|start|stop
 		
-	Example dc service test status`
+Example 
+	dc service test status`
 )
 
 var (
