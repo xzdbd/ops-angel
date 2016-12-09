@@ -81,7 +81,13 @@ const (
 	DockerCloudToolName     = "dockercloud"
 	DockerCloudToolAlias    = "dc"
 	DockerCloudToolEndpoint = "/dockercloud"
-	DockerCloudHelpMsg      = `dockercloud is a operations tool.`
+	DockerCloudHelpMsg      = `dockercloud is an operations tool.
+	Usage:
+		dockercloud service NAME [status]|start|stop
+	or
+		dc service NAME [status]|start|stop
+		
+	Example dc service test status`
 )
 
 var (
@@ -145,7 +151,7 @@ func (dc *DockerCloudTool) Run() (TextResponse, error) {
 				}
 				textResp.Content = fmt.Sprintf("共有%d个服务。\n", dcList.Meta.TotalCount)
 				for i := 0; i < dcList.Meta.TotalCount; i++ {
-					textResp.Content += fmt.Sprintf("%d. %s: %s\n", i, dcList.Objects[i].Name, dcList.Objects[i].State)
+					textResp.Content += fmt.Sprintf("%d. %s: %s\n", i+1, dcList.Objects[i].Name, dcList.Objects[i].State)
 				}
 			} else {
 				var err error
@@ -167,6 +173,15 @@ func (dc *DockerCloudTool) Run() (TextResponse, error) {
 				textResp.Content = fmt.Sprintf("服务启动错误，错误信息：%s\n", err.Error())
 			} else {
 				textResp.Content = fmt.Sprintf("服务启动成功，请稍后查看该服务状态。")
+			}
+		}
+	case "stop":
+		if dc.ServiceName != "" {
+			_, err := stopDockerCloudService(dc.ServiceName)
+			if err != nil {
+				textResp.Content = fmt.Sprintf("服务停止错误，错误信息：%s\n", err.Error())
+			} else {
+				textResp.Content = fmt.Sprintf("服务停止成功，请稍后查看该服务状态。")
 			}
 		}
 	default:
@@ -217,6 +232,23 @@ func startDockerCloudService(name string) (dockercloud.Service, error) {
 		return service, err
 	}
 	req := httplib.Post(APIADDRESS + APIVERSION + DockerCloudToolEndpoint + "/service/" + uuid + "/start")
+	req.SetBasicAuth(apiuser, apipassword)
+	req.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
+	err = req.ToJSON(&service)
+	if err != nil {
+		return service, err
+	}
+	beego.Trace(service)
+	return service, nil
+}
+
+func stopDockerCloudService(name string) (dockercloud.Service, error) {
+	var service dockercloud.Service
+	uuid, err := getDockerCloudServiceUuid(name)
+	if err != nil {
+		return service, err
+	}
+	req := httplib.Post(APIADDRESS + APIVERSION + DockerCloudToolEndpoint + "/service/" + uuid + "/stop")
 	req.SetBasicAuth(apiuser, apipassword)
 	req.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 	err = req.ToJSON(&service)

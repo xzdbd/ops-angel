@@ -131,7 +131,14 @@ func dockerCloudToolHandler(content string, req models.Request) models.TextRespo
 		}
 	} else if length == 4 {
 		if cmd[1] == "service" {
-			if cmd[3] == "start" || cmd[3] == "stop" || cmd[3] == "status" {
+			if cmd[3] == "start" || cmd[3] == "stop" {
+				dcTool.Action = cmd[3]
+				var valid bool
+				valid, resp = validatePrivilegedAction(req)
+				if !valid {
+					return resp
+				}
+			} else if cmd[3] == "status" {
 				dcTool.Action = cmd[3]
 			} else {
 				return dockerCloudToolHelpHandler(req, dcTool)
@@ -184,4 +191,16 @@ func descriptionHandler(req models.Request) models.TextResponse {
 	resp.CreateTime = time.Duration(time.Now().Unix())
 	resp.MsgType = models.MsgTypeText
 	return resp
+}
+
+func validatePrivilegedAction(req models.Request) (bool, models.TextResponse) {
+	var textResp models.TextResponse
+	users := beego.AppConfig.Strings("privilegeduser")
+	for i := 0; i < len(users); i++ {
+		if req.FromUserName == users[i] {
+			return true, textResp
+		}
+	}
+	textResp.Content = "您没有权限执行该操作。"
+	return false, textResp
 }

@@ -4,3 +4,4 @@ runmode = dev
 copyrequestbody = true
 apiuser = 
 apipassword = 
+privilegeduser
