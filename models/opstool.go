@@ -168,7 +168,7 @@ func (dc *DockerCloudTool) Run() (TextResponse, error) {
 		}
 	case "start":
 		if dc.ServiceName != "" {
-			_, err := startDockerCloudService(dc.ServiceName)
+			_, err := actionDockerCloudService(dc.ServiceName, "start")
 			if err != nil {
 				textResp.Content = fmt.Sprintf("服务启动错误，错误信息：%s\n", err.Error())
 			} else {
@@ -177,11 +177,20 @@ func (dc *DockerCloudTool) Run() (TextResponse, error) {
 		}
 	case "stop":
 		if dc.ServiceName != "" {
-			_, err := stopDockerCloudService(dc.ServiceName)
+			_, err := actionDockerCloudService(dc.ServiceName, "stop")
 			if err != nil {
-				textResp.Content = fmt.Sprintf("服务停止错误，错误信息：%s\n", err.Error())
+				textResp.Content = fmt.Sprintf("服务错误，错误信息：%s\n", err.Error())
 			} else {
 				textResp.Content = fmt.Sprintf("服务停止成功，请稍后查看该服务状态。")
+			}
+		}
+	case "redeploy":
+		if dc.ServiceName != "" {
+			_, err := actionDockerCloudService(dc.ServiceName, "redeploy")
+			if err != nil {
+				textResp.Content = fmt.Sprintf("服务重新部署错误，错误信息：%s\n", err.Error())
+			} else {
+				textResp.Content = fmt.Sprintf("服务重新部署成功，请稍后查看该服务状态。")
 			}
 		}
 	default:
@@ -225,30 +234,22 @@ func getDockerCloudServiceUuid(name string) (string, error) {
 	return dcList.Objects[0].Uuid, nil
 }
 
-func startDockerCloudService(name string) (dockercloud.Service, error) {
+// start, stop and redeploy service
+func actionDockerCloudService(name string, action string) (dockercloud.Service, error) {
 	var service dockercloud.Service
+	var req *httplib.BeegoHTTPRequest
 	uuid, err := getDockerCloudServiceUuid(name)
 	if err != nil {
 		return service, err
 	}
-	req := httplib.Post(APIADDRESS + APIVERSION + DockerCloudToolEndpoint + "/service/" + uuid + "/start")
-	req.SetBasicAuth(apiuser, apipassword)
-	req.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
-	err = req.ToJSON(&service)
-	if err != nil {
-		return service, err
+	switch action {
+	case "start":
+		req = httplib.Post(APIADDRESS + APIVERSION + DockerCloudToolEndpoint + "/service/" + uuid + "/start")
+	case "stop":
+		req = httplib.Post(APIADDRESS + APIVERSION + DockerCloudToolEndpoint + "/service/" + uuid + "/stop")
+	case "redeploy":
+		req = httplib.Post(APIADDRESS + APIVERSION + DockerCloudToolEndpoint + "/service/" + uuid + "/redeploy")
 	}
-	beego.Trace(service)
-	return service, nil
-}
-
-func stopDockerCloudService(name string) (dockercloud.Service, error) {
-	var service dockercloud.Service
-	uuid, err := getDockerCloudServiceUuid(name)
-	if err != nil {
-		return service, err
-	}
-	req := httplib.Post(APIADDRESS + APIVERSION + DockerCloudToolEndpoint + "/service/" + uuid + "/stop")
 	req.SetBasicAuth(apiuser, apipassword)
 	req.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
 	err = req.ToJSON(&service)

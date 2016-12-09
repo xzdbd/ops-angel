@@ -131,7 +131,7 @@ func dockerCloudToolHandler(content string, req models.Request) models.TextRespo
 		}
 	} else if length == 4 {
 		if cmd[1] == "service" {
-			if cmd[3] == "start" || cmd[3] == "stop" {
+			if cmd[3] == "start" || cmd[3] == "stop" || cmd[3] == "redeploy" {
 				dcTool.Action = cmd[3]
 				var valid bool
 				valid, resp = validatePrivilegedAction(req)
