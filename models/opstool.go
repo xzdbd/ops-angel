@@ -123,7 +123,8 @@ func (g *GoogleTool) Run() (NewsResponse, error) {
 
 	newsResp.ArticleCount = len(GoogleResultList)
 	for i := 0; i < newsResp.ArticleCount; i++ {
-		item := Item{Title: GoogleResultList[i].Title, Description: GoogleResultList[i].Abstract, Url: GoogleResultList[i].URL, PicUrl: "https://s.aolcdn.com/hss/storage/midas/17f4b60aec299f212a456632b2311c5e/202565129/google-1200-2.jpg"}
+		picUrl := getFavicons(GoogleResultList[i].URL)
+		item := Item{Title: GoogleResultList[i].Title, Description: GoogleResultList[i].Abstract, Url: GoogleResultList[i].URL, PicUrl: picUrl}
 		newsResp.Articles = append(newsResp.Articles, &item)
 	}
 
@@ -259,4 +260,9 @@ func actionDockerCloudService(name string, action string) (dockercloud.Service, 
 		return service, err
 	}
 	return service, nil
+}
+
+func getFavicons(domain string) string {
+	//return "https://www.google.com/s2/favicons?domain=" + domain
+	return "https://api.byi.pw/favicon/?url=" + domain
 }
