@@ -123,7 +123,8 @@ func (g *GoogleTool) Run() (NewsResponse, error) {
 
 	newsResp.ArticleCount = len(GoogleResultList)
 	for i := 0; i < newsResp.ArticleCount; i++ {
-		picUrl := getFavicons(GoogleResultList[i].URL)
+		//picUrl := getFavicons(GoogleResultList[i].URL)
+		picUrl := "https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Google_%22G%22_Logo.svg/200px-Google_%22G%22_Logo.svg.png"
 		item := Item{Title: GoogleResultList[i].Title, Description: GoogleResultList[i].Abstract, Url: GoogleResultList[i].URL, PicUrl: picUrl}
 		newsResp.Articles = append(newsResp.Articles, &item)
 	}
