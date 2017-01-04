@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/config"
 	"github.com/astaxie/beego/httplib"
 	"googlemaps.github.io/maps"
 )
@@ -20,19 +21,34 @@ const (
 	MapHelpMsg      = `map is a direction tool.
 
 Usage:
-	dockercloud service NAME [status]|start|stop
-or
-	dc service NAME [status]|start|stop
+
+1. 规划交通路线
+	map direct PlaceA to PlaceB
 		
 Example 
-	dc service test status`
+	map direct 杭州火车东站 to 武林广场
+
+2. 设置Home地址
+	map set home Place	
+
+3. 查询Home地址
+	map get home
+
+4. 规划回家交通路线	
+	map go home Place
+	or
+	直接发送位置信息 
+	
+This tool is powered by Google Maps.`
 )
 
 type MapTool struct {
 	toolBase
 	Origin      string
 	Destination string
+	UserID      string
 	HomeAddress string
+	Latlng      string
 	HelpMsg     string
 }
 
@@ -159,61 +175,176 @@ type Duration struct {
 	Text  string `json:"text"`
 }
 
-func (m *MapTool) NewTool() {
+var (
+	userHomeConfig config.Configer
+)
+
+func init() {
+	var err error
+	userHomeConfig, err = config.NewConfig("ini", "conf/userhome.conf")
+	if err != nil {
+		beego.Error("Failed to load userhome.conf file.")
+	}
+}
+
+func (m *MapTool) NewTool(req Request) {
 	m.name = MapToolName
 	m.alias = MapToolAlias
 	m.endpoint = MapToolAlias
 	m.HelpMsg = MapHelpMsg
+	m.UserID = req.FromUserName
 }
 
-func (m *MapTool) Directions() (TextResponse, error) {
+func (m *MapTool) Directions() TextResponse {
 	var textResp TextResponse
 	var originPlaceID, destinationPlaceID string
 	textResp.MsgType = MsgTypeText
 
 	if m.Origin != "" && m.Destination != "" {
 		var err error
-		originPlaceID, err = getPlaceID(m.Origin)
+		originPlaceID, _, err = getPlaceID(m.Origin)
 		if err != nil {
 			textResp.Content = fmt.Sprintf("查找地点失败，请尝试其他地点关键词。")
-			return textResp, nil
+			return textResp
 		}
-		destinationPlaceID, err = getPlaceID(m.Destination)
+		destinationPlaceID, _, err = getPlaceID(m.Destination)
 		if err != nil {
 			textResp.Content = fmt.Sprintf("查找地点失败，请尝试其他地点关键词。")
-			return textResp, nil
+			return textResp
 		}
 	} else {
 		textResp.Content = fmt.Sprintf("地点关键词不能为空。")
-		return textResp, nil
+		return textResp
 	}
 	//originPlaceID = "ChIJWYij7kicTDQRCp51F2RCKfM"
 	//destinationPlaceID = "ChIJwWnPHVdiSzQRN7O4WYYFC14"
 	directionsStr, err := getDirections(originPlaceID, destinationPlaceID)
 	if err != nil {
 		textResp.Content = err.Error()
-		return textResp, nil
+		return textResp
 	}
 	beego.Info("Directions Info:", directionsStr)
 	textResp.Content = directionsStr
-	return textResp, nil
+	return textResp
 }
 
-func getPlaceID(keyword string) (string, error) {
+func (m *MapTool) SetHome() TextResponse {
+	var textResp TextResponse
+	if userHomeConfig.String(m.UserID+"::id") != "" {
+		beego.Info("User ", m.UserID, "address is existed. Overwriting..")
+	}
+
+	homePlaceID, address, err := getPlaceID(m.HomeAddress)
+	if err != nil {
+		textResp.Content = fmt.Sprintf("设置Home地址失败，请尝试其他地址关键词。")
+		return textResp
+	}
+	//homePlaceID := "idididdid"
+	//address := "addressaddress"
+	if err := userHomeConfig.Set(m.UserID+"::id", homePlaceID); err != nil {
+		textResp.Content = fmt.Sprintf("设置Home地址失败。")
+		return textResp
+	}
+
+	if err := userHomeConfig.Set(m.UserID+"::address", address); err != nil {
+		textResp.Content = fmt.Sprintf("设置Home地址失败。")
+		return textResp
+	}
+
+	if err := userHomeConfig.SaveConfigFile("conf/userhome.conf"); err != nil {
+		textResp.Content = fmt.Sprintf("设置Home地址失败。")
+		return textResp
+	}
+	textResp.Content = fmt.Sprintf("设置Home地址成功：%s", address)
+	beego.Info("Set user home address:", m.UserID, homePlaceID, address)
+	return textResp
+}
+
+func (m *MapTool) GetHome() TextResponse {
+	var textResp TextResponse
+	homePlaceID := userHomeConfig.String(m.UserID + "::id")
+	address := userHomeConfig.String(m.UserID + "::address")
+
+	if homePlaceID == "" || address == "" {
+		textResp.Content = fmt.Sprintf("用户还未设置Home地址，使用map set home来设置Home地址。")
+		return textResp
+	}
+
+	textResp.Content = fmt.Sprintf("Home地址：%s", address)
+	beego.Info("Set user home address:", m.UserID, homePlaceID, address)
+	return textResp
+}
+
+func (m *MapTool) GoHome() TextResponse {
+	var textResp TextResponse
+	var originPlaceID string
+	var err error
+	homePlaceID := userHomeConfig.String(m.UserID + "::id")
+	address := userHomeConfig.String(m.UserID + "::address")
+
+	if homePlaceID == "" || address == "" {
+		textResp.Content = fmt.Sprintf("用户还未设置Home地址，使用map set home来设置Home地址。")
+		return textResp
+	}
+
+	// Use nearby search first if Latlng exists
+	if m.Latlng != "" {
+		originPlaceID, err = getPleaceNearby(m.Origin, m.Latlng)
+		if err != nil {
+			originPlaceID, _, err = getPlaceID(m.Origin)
+		}
+	} else {
+		originPlaceID, _, err = getPlaceID(m.Origin)
+	}
+	if err != nil {
+		textResp.Content = fmt.Sprintf("查找地点失败，请尝试其他地点关键词。")
+		return textResp
+	}
+
+	directionsStr, err := getDirections(originPlaceID, homePlaceID)
+	if err != nil {
+		textResp.Content = err.Error()
+		return textResp
+	}
+	textResp.Content = directionsStr
+	return textResp
+}
+
+func getPlaceID(keyword string) (placeID string, address string, err error) {
 	var placeSearchResult *maps.PlacesSearchResponse
 	req := httplib.Get(APIADDRESS + APIVERSION + MapToolEndpoint + "/place/search")
 	req.Param("keyword", keyword)
 	req.SetBasicAuth(apiuser, apipassword)
 	req.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
-	err := req.ToJSON(&placeSearchResult)
+	err = req.ToJSON(&placeSearchResult)
+	if err != nil {
+		return "", "", err
+	}
+	if len(placeSearchResult.Results) < 1 {
+		return "", "", errors.New("place not found")
+	}
+	beego.Info("Place Search Result: name:", placeSearchResult.Results[0].Name, "address:", placeSearchResult.Results[0].FormattedAddress, "PlaceID:", placeSearchResult.Results[0].PlaceID)
+	placeID = placeSearchResult.Results[0].PlaceID
+	address = placeSearchResult.Results[0].FormattedAddress
+	return placeID, address, nil
+}
+
+func getPleaceNearby(keyword, latlng string) (placeID string, err error) {
+	var placeSearchResult *maps.PlacesSearchResponse
+	req := httplib.Get(APIADDRESS + APIVERSION + MapToolEndpoint + "/place/nearby")
+	req.Param("keyword", keyword)
+	req.Param("latlng", latlng)
+	req.SetBasicAuth(apiuser, apipassword)
+	req.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
+	err = req.ToJSON(&placeSearchResult)
 	if err != nil {
 		return "", err
 	}
 	if len(placeSearchResult.Results) < 1 {
 		return "", errors.New("place not found")
 	}
-	beego.Info("Place Search Result: name:", placeSearchResult.Results[0].Name, "address:", placeSearchResult.Results[0].FormattedAddress, "PlaceID:", placeSearchResult.Results[0].PlaceID)
-	placeID := placeSearchResult.Results[0].PlaceID
+	beego.Info("Nearby Place Search Result: name:", placeSearchResult.Results[0].Name, "address:", placeSearchResult.Results[0].FormattedAddress, "PlaceID:", placeSearchResult.Results[0].PlaceID)
+	placeID = placeSearchResult.Results[0].PlaceID
 	return placeID, nil
 }
 
@@ -231,6 +362,9 @@ func getDirections(originID string, destinationID string) (string, error) {
 		return "", err
 	}
 
+	if len(response.Routes) < 1 {
+		return "", errors.New("查询线路失败，无可用线路。")
+	}
 	directionsResult := response.Routes
 	if len(directionsResult[0].Legs) >= 1 {
 		resultStr = fmt.Sprintf("路线总长%s，预计用时%s\n◇ %s\n", directionsResult[0].Legs[0].Distance.HumanReadable,

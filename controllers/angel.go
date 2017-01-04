@@ -6,6 +6,8 @@ import (
 
 	"strings"
 
+	"fmt"
+
 	"github.com/astaxie/beego"
 	"github.com/xzdbd/ops-angel/models"
 )
@@ -67,6 +69,10 @@ func (c *AngelController) Post() {
 			c.Data["xml"] = descriptionHandler(req)
 			c.ServeXML()
 		}
+	} else if req.MsgType == models.MsgTypeLocation {
+		resp := mapToolLocationHandler(req)
+		c.Data["xml"] = resp
+		c.ServeXML()
 	} else if req.MsgType == models.MsgTypeEvent && req.Event == models.MsgTypeEventSubscribe {
 		c.Data["xml"] = subscribeHandler(req)
 		c.ServeXML()
@@ -180,20 +186,43 @@ func mapToolHandler(content string, req models.Request) models.TextResponse {
 	var mapTool models.MapTool
 	var resp models.TextResponse
 
-	mapTool.NewTool()
+	mapTool.NewTool(req)
 
 	cmd := strings.Split(content, " ")
 	length := len(cmd)
 
-	if length == 5 && cmd[1] == "direct" && cmd[3] == "to" {
+	if length == 5 && cmd[1] == "direct" && cmd[3] == "to" { // map direct A to B
 		mapTool.Origin = cmd[2]
 		mapTool.Destination = cmd[4]
+		resp = mapTool.Directions()
+	} else if length == 4 && cmd[1] == "set" && cmd[2] == "home" { //map set home A
+		mapTool.HomeAddress = cmd[3]
+		resp = mapTool.SetHome()
+	} else if length == 3 && cmd[1] == "get" && cmd[2] == "home" { //map get home
+		resp = mapTool.GetHome()
+	} else if length == 4 && cmd[1] == "go" && cmd[2] == "home" { //map go home A
+		mapTool.Origin = cmd[3]
+		resp = mapTool.GoHome()
+	} else {
+		resp = mapToolHelpHandler(req, mapTool)
 	}
 
-	resp, err := mapTool.Directions()
-	if err != nil {
-		return mapToolHelpHandler(req, mapTool)
-	}
+	resp.ToUserName = req.FromUserName
+	resp.FromUserName = req.ToUserName
+	resp.CreateTime = time.Duration(time.Now().Unix())
+	return resp
+}
+
+func mapToolLocationHandler(req models.Request) models.TextResponse {
+	var mapTool models.MapTool
+	var resp models.TextResponse
+
+	mapTool.NewTool(req)
+
+	mapTool.Latlng = fmt.Sprintf("%f,%f", req.Location_X, req.Location_Y)
+	mapTool.Origin = req.Label
+
+	resp = mapTool.GoHome()
 	resp.ToUserName = req.FromUserName
 	resp.FromUserName = req.ToUserName
 	resp.CreateTime = time.Duration(time.Now().Unix())
@@ -217,6 +246,7 @@ func subscribeHandler(req models.Request) models.TextResponse {
 	resp.Content = `感谢订阅运维小天使官方微信，目前支持的工具：
 	1. google(g)
 	2. dockercloud(dc)
+	3. map(m)
 输入工具名获取使用帮助。`
 	resp.CreateTime = time.Duration(time.Now().Unix())
 	resp.MsgType = models.MsgTypeText
@@ -230,6 +260,7 @@ func descriptionHandler(req models.Request) models.TextResponse {
 	resp.Content = `运维小天使官方微信，目前支持的工具：
 	1. google(g)
 	2. dockercloud(dc)
+	3. map(m)
 输入工具名获取使用帮助。`
 	resp.CreateTime = time.Duration(time.Now().Unix())
 	resp.MsgType = models.MsgTypeText
