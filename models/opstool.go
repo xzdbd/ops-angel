@@ -277,6 +277,9 @@ func getPlaceID(keyword string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if len(placeSearchResult.Results) < 1 {
+		return "", errors.New("place not found")
+	}
 	beego.Info("Place Search Result: name:", placeSearchResult.Results[0].Name, "address:", placeSearchResult.Results[0].FormattedAddress, "PlaceID:", placeSearchResult.Results[0].PlaceID)
 	placeID := placeSearchResult.Results[0].PlaceID
 	return placeID, nil
@@ -303,14 +306,14 @@ func getDirections(originID string, destinationID string) (string, error) {
 			directionsResult[0].Legs[0].StartAddress)
 		for i := 0; i < len(directionsResult[0].Legs[0].Steps); i++ {
 			if directionsResult[0].Legs[0].Steps[i].TravelMode == "WALKING" {
-				resultStr += fmt.Sprintf("  %s\n", directionsResult[0].Legs[0].Steps[i].HTMLInstructions)
-				resultStr += fmt.Sprintf("  %s %s\n", directionsResult[0].Legs[0].Steps[i].Distance.HumanReadable, directionsResult[0].Legs[0].Steps[i].Duration.Text)
+				resultStr += fmt.Sprintf("    %s\n", directionsResult[0].Legs[0].Steps[i].HTMLInstructions)
+				resultStr += fmt.Sprintf("    %s %s\n", directionsResult[0].Legs[0].Steps[i].Distance.HumanReadable, directionsResult[0].Legs[0].Steps[i].Duration.Text)
 			} else if directionsResult[0].Legs[0].Steps[i].TravelMode == "TRANSIT" {
 				resultStr += fmt.Sprintf("◇ %s\n", directionsResult[0].Legs[0].Steps[i].TransitDetails.DepartureStop.Name)
-				resultStr += fmt.Sprintf("  %s %s %d站\n", directionsResult[0].Legs[0].Steps[i].HTMLInstructions,
+				resultStr += fmt.Sprintf("    %s %s %d站\n", directionsResult[0].Legs[0].Steps[i].HTMLInstructions,
 					directionsResult[0].Legs[0].Steps[i].TransitDetails.Line.ShortName,
 					directionsResult[0].Legs[0].Steps[i].TransitDetails.NumStops)
-				resultStr += fmt.Sprintf("  %s %s\n", directionsResult[0].Legs[0].Steps[i].Distance.HumanReadable, directionsResult[0].Legs[0].Steps[i].Duration.Text)
+				resultStr += fmt.Sprintf("    %s %s\n", directionsResult[0].Legs[0].Steps[i].Distance.HumanReadable, directionsResult[0].Legs[0].Steps[i].Duration.Text)
 				resultStr += fmt.Sprintf("◇ %s\n", directionsResult[0].Legs[0].Steps[i].TransitDetails.ArrivalStop.Name)
 			}
 		}
