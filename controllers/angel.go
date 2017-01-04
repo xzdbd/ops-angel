@@ -56,6 +56,13 @@ func (c *AngelController) Post() {
 			c.Data["xml"] = resp
 			c.ServeXML()
 
+		case models.MapToolName, models.MapToolAlias:
+			beego.Info("User request map tool, User:", req.FromUserName, "Command:", req.Content)
+			resp := mapToolHandler(content, req)
+			beego.Info("Response to the user with map result. User:", req.FromUserName, "content:", req.Content)
+			c.Data["xml"] = resp
+			c.ServeXML()
+
 		default:
 			c.Data["xml"] = descriptionHandler(req)
 			c.ServeXML()
@@ -164,6 +171,40 @@ func dockerCloudToolHelpHandler(req models.Request, dc models.DockerCloudTool) m
 	respHelp.ToUserName = req.FromUserName
 	respHelp.FromUserName = req.ToUserName
 	respHelp.Content = dc.HelpMsg
+	respHelp.CreateTime = time.Duration(time.Now().Unix())
+	respHelp.MsgType = models.MsgTypeText
+	return respHelp
+}
+
+func mapToolHandler(content string, req models.Request) models.TextResponse {
+	var mapTool models.MapTool
+	var resp models.TextResponse
+
+	mapTool.NewTool()
+
+	cmd := strings.Split(content, " ")
+	length := len(cmd)
+
+	if length == 5 && cmd[1] == "direct" && cmd[3] == "to" {
+		mapTool.Origin = cmd[2]
+		mapTool.Destination = cmd[4]
+	}
+
+	resp, err := mapTool.Directions()
+	if err != nil {
+		return mapToolHelpHandler(req, mapTool)
+	}
+	resp.ToUserName = req.FromUserName
+	resp.FromUserName = req.ToUserName
+	resp.CreateTime = time.Duration(time.Now().Unix())
+	return resp
+}
+
+func mapToolHelpHandler(req models.Request, m models.MapTool) models.TextResponse {
+	var respHelp models.TextResponse
+	respHelp.ToUserName = req.FromUserName
+	respHelp.FromUserName = req.ToUserName
+	respHelp.Content = m.HelpMsg
 	respHelp.CreateTime = time.Duration(time.Now().Unix())
 	respHelp.MsgType = models.MsgTypeText
 	return respHelp

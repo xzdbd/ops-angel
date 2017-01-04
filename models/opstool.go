@@ -14,6 +14,7 @@ import (
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/httplib"
 	"github.com/docker/go-dockercloud/dockercloud"
+	"googlemaps.github.io/maps"
 )
 
 type Tool interface {
@@ -55,8 +56,17 @@ type DockerCloudTool struct {
 	HelpMsg     string
 }
 
+type MapTool struct {
+	toolBase
+	Origin      string
+	Destination string
+	HomeAddress string
+	HelpMsg     string
+}
+
 const (
 	APIADDRESS = "https://api.xzdbd.com/"
+	//APIADDRESS = "http://11.11.1.6:8098/"
 	APIVERSION = "v1"
 
 	// Google Tool
@@ -82,6 +92,20 @@ Example:
 	DockerCloudToolAlias    = "dc"
 	DockerCloudToolEndpoint = "/dockercloud"
 	DockerCloudHelpMsg      = `dockercloud is an operations tool.
+
+Usage:
+	dockercloud service NAME [status]|start|stop
+or
+	dc service NAME [status]|start|stop
+		
+Example 
+	dc service test status`
+
+	// Map Tool
+	MapToolName     = "map"
+	MapToolAlias    = "m"
+	MapToolEndpoint = "/map"
+	MapHelpMsg      = `map is a direction tool.
 
 Usage:
 	dockercloud service NAME [status]|start|stop
@@ -201,6 +225,100 @@ func (dc *DockerCloudTool) Run() (TextResponse, error) {
 		return textResp, errors.New("Invalid Action. Valid actions are 'start', 'stop' and 'status'")
 	}
 	return textResp, nil
+}
+
+func (m *MapTool) NewTool() {
+	m.name = MapToolName
+	m.alias = MapToolAlias
+	m.endpoint = MapToolAlias
+	m.HelpMsg = MapHelpMsg
+}
+
+func (m *MapTool) Directions() (TextResponse, error) {
+	var textResp TextResponse
+	var originPlaceID, destinationPlaceID string
+	textResp.MsgType = MsgTypeText
+
+	if m.Origin != "" && m.Destination != "" {
+		var err error
+		originPlaceID, err = getPlaceID(m.Origin)
+		if err != nil {
+			textResp.Content = fmt.Sprintf("查找地点失败，请尝试其他地点关键词。")
+			return textResp, nil
+		}
+		destinationPlaceID, err = getPlaceID(m.Destination)
+		if err != nil {
+			textResp.Content = fmt.Sprintf("查找地点失败，请尝试其他地点关键词。")
+			return textResp, nil
+		}
+	} else {
+		textResp.Content = fmt.Sprintf("地点关键词不能为空。")
+		return textResp, nil
+	}
+	//originPlaceID = "ChIJWYij7kicTDQRCp51F2RCKfM"
+	//destinationPlaceID = "ChIJwWnPHVdiSzQRN7O4WYYFC14"
+	directionsStr, err := getDirections(originPlaceID, destinationPlaceID)
+	if err != nil {
+		textResp.Content = err.Error()
+		return textResp, nil
+	}
+	beego.Info("Directions Info:", directionsStr)
+	textResp.Content = directionsStr
+	return textResp, nil
+}
+
+func getPlaceID(keyword string) (string, error) {
+	var placeSearchResult *maps.PlacesSearchResponse
+	req := httplib.Get(APIADDRESS + APIVERSION + MapToolEndpoint + "/place/search")
+	req.Param("keyword", keyword)
+	req.SetBasicAuth(apiuser, apipassword)
+	req.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
+	err := req.ToJSON(&placeSearchResult)
+	if err != nil {
+		return "", err
+	}
+	beego.Info("Place Search Result: name:", placeSearchResult.Results[0].Name, "address:", placeSearchResult.Results[0].FormattedAddress, "PlaceID:", placeSearchResult.Results[0].PlaceID)
+	placeID := placeSearchResult.Results[0].PlaceID
+	return placeID, nil
+}
+
+func getDirections(originID string, destinationID string) (string, error) {
+	var response *Routes
+	var resultStr string
+	req := httplib.Get(APIADDRESS + APIVERSION + MapToolEndpoint + "/direct/transit")
+	req.Param("origin", originID)
+	req.Param("destination", destinationID)
+	req.SetBasicAuth(apiuser, apipassword)
+	req.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
+	err := req.ToJSON(&response)
+	if err != nil {
+		beego.Trace("error:", err.Error())
+		return "", err
+	}
+
+	directionsResult := response.Routes
+	if len(directionsResult[0].Legs) >= 1 {
+		resultStr = fmt.Sprintf("路线总长%s，预计用时%s\n◇ %s\n", directionsResult[0].Legs[0].Distance.HumanReadable,
+			directionsResult[0].Legs[0].Duration.Text,
+			directionsResult[0].Legs[0].StartAddress)
+		for i := 0; i < len(directionsResult[0].Legs[0].Steps); i++ {
+			if directionsResult[0].Legs[0].Steps[i].TravelMode == "WALKING" {
+				resultStr += fmt.Sprintf("  %s\n", directionsResult[0].Legs[0].Steps[i].HTMLInstructions)
+				resultStr += fmt.Sprintf("  %s %s\n", directionsResult[0].Legs[0].Steps[i].Distance.HumanReadable, directionsResult[0].Legs[0].Steps[i].Duration.Text)
+			} else if directionsResult[0].Legs[0].Steps[i].TravelMode == "TRANSIT" {
+				resultStr += fmt.Sprintf("◇ %s\n", directionsResult[0].Legs[0].Steps[i].TransitDetails.DepartureStop.Name)
+				resultStr += fmt.Sprintf("  %s %s %d站\n", directionsResult[0].Legs[0].Steps[i].HTMLInstructions,
+					directionsResult[0].Legs[0].Steps[i].TransitDetails.Line.ShortName,
+					directionsResult[0].Legs[0].Steps[i].TransitDetails.NumStops)
+				resultStr += fmt.Sprintf("  %s %s\n", directionsResult[0].Legs[0].Steps[i].Distance.HumanReadable, directionsResult[0].Legs[0].Steps[i].Duration.Text)
+				resultStr += fmt.Sprintf("◇ %s\n", directionsResult[0].Legs[0].Steps[i].TransitDetails.ArrivalStop.Name)
+			}
+		}
+		resultStr += fmt.Sprintf("◇ %s\n", directionsResult[0].Legs[0].EndAddress)
+	} else {
+		return "", errors.New("查询线路失败，无可用线路。")
+	}
+	return resultStr, nil
 }
 
 func getAllDockerCloudService() (dockercloud.SListResponse, error) {
