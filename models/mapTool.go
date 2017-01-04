@@ -230,6 +230,7 @@ func (m *MapTool) Directions() TextResponse {
 
 func (m *MapTool) SetHome() TextResponse {
 	var textResp TextResponse
+	textResp.MsgType = MsgTypeText
 	if userHomeConfig.String(m.UserID+"::id") != "" {
 		beego.Info("User ", m.UserID, "address is existed. Overwriting..")
 	}
@@ -262,6 +263,7 @@ func (m *MapTool) SetHome() TextResponse {
 
 func (m *MapTool) GetHome() TextResponse {
 	var textResp TextResponse
+	textResp.MsgType = MsgTypeText
 	homePlaceID := userHomeConfig.String(m.UserID + "::id")
 	address := userHomeConfig.String(m.UserID + "::address")
 
@@ -271,7 +273,7 @@ func (m *MapTool) GetHome() TextResponse {
 	}
 
 	textResp.Content = fmt.Sprintf("Home地址：%s", address)
-	beego.Info("Set user home address:", m.UserID, homePlaceID, address)
+	beego.Info("Get user home address:", m.UserID, homePlaceID, address)
 	return textResp
 }
 
@@ -279,6 +281,7 @@ func (m *MapTool) GoHome() TextResponse {
 	var textResp TextResponse
 	var originPlaceID string
 	var err error
+	textResp.MsgType = MsgTypeText
 	homePlaceID := userHomeConfig.String(m.UserID + "::id")
 	address := userHomeConfig.String(m.UserID + "::address")
 
